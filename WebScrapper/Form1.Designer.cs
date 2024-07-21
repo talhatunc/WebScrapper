@@ -30,6 +30,11 @@
         {
             textBoxUrl = new TextBox();
             btnGo = new Button();
+            dataGridViewTask = new DataGridView();
+            FieldName = new DataGridViewTextBoxColumn();
+            Action = new DataGridViewTextBoxColumn();
+            ExtractedData = new DataGridViewTextBoxColumn();
+            ((System.ComponentModel.ISupportInitialize)dataGridViewTask).BeginInit();
             SuspendLayout();
             // 
             // textBoxUrl
@@ -50,16 +55,48 @@
             btnGo.UseVisualStyleBackColor = true;
             btnGo.Click += btnGo_Click;
             // 
+            // dataGridViewTask
+            // 
+            dataGridViewTask.AllowUserToAddRows = false;
+            dataGridViewTask.AllowUserToDeleteRows = false;
+            dataGridViewTask.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dataGridViewTask.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dataGridViewTask.Columns.AddRange(new DataGridViewColumn[] { FieldName, Action, ExtractedData });
+            dataGridViewTask.Location = new Point(218, 12);
+            dataGridViewTask.Name = "dataGridViewTask";
+            dataGridViewTask.ReadOnly = true;
+            dataGridViewTask.Size = new Size(711, 103);
+            dataGridViewTask.TabIndex = 2;
+            // 
+            // FieldName
+            // 
+            FieldName.HeaderText = "Field Name";
+            FieldName.Name = "FieldName";
+            FieldName.ReadOnly = true;
+            // 
+            // Action
+            // 
+            Action.HeaderText = "Action";
+            Action.Name = "Action";
+            Action.ReadOnly = true;
+            // 
+            // ExtractedData
+            // 
+            ExtractedData.HeaderText = "Data Extracted";
+            ExtractedData.Name = "ExtractedData";
+            ExtractedData.ReadOnly = true;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(863, 530);
+            ClientSize = new Size(941, 514);
+            Controls.Add(dataGridViewTask);
             Controls.Add(btnGo);
             Controls.Add(textBoxUrl);
             Name = "Form1";
             Text = "Form1";
-            Load += Form1_Load;
+            ((System.ComponentModel.ISupportInitialize)dataGridViewTask).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -68,5 +105,9 @@
 
         private TextBox textBoxUrl;
         private Button btnGo;
+        private DataGridView dataGridViewTask;
+        private DataGridViewTextBoxColumn FieldName;
+        private DataGridViewTextBoxColumn Action;
+        private DataGridViewTextBoxColumn ExtractedData;
     }
 }
