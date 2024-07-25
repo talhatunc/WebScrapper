@@ -8,29 +8,27 @@ using Newtonsoft.Json;
 
 namespace WebScrapper
 {
-    public partial class Form1 : Form
+    public partial class FormNewTask : Form
     {
         private List<ScrapingTask> tasks;
         private WebView2 webView;
         private string lastUrl;
 
-        public Form1()
+        public FormNewTask()
         {
             InitializeComponent();
             InitializeControls();
-            LoadTasks();
+            //LoadTasks();
         }
+
+
         private async Task InitializeControls()
         {
             webView = new WebView2
             {
-                Top = 300,
-                Left = 10,
-                Width = this.ClientSize.Width - 20,
-                Height = this.ClientSize.Height - 50,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+                Dock = DockStyle.Fill,
             };
-            this.Controls.Add(webView);
+            this.tableLayoutPanelMain.Controls.Add(webView);
 
             // WebView2'nin baþlatýlmasýný bekleyin
             await webView.EnsureCoreWebView2Async(null);
