@@ -5,6 +5,11 @@ using System.Windows.Forms;
 using HtmlAgilityPack;
 using System.Xml.Linq;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Reflection.Metadata;
+using Newtonsoft.Json.Linq;
 
 namespace WebScrapper
 {
@@ -40,139 +45,219 @@ namespace WebScrapper
         private async void WebView_DOMContentLoaded(object sender, CoreWebView2DOMContentLoadedEventArgs e)
         {
             string script = @"
-                document.addEventListener('mouseover', function(event) {
-                    event.target.style.border = '2px solid red';
-                });
-                document.addEventListener('mouseout', function(event) {
-                    event.target.style.border = '';
-                });
-                document.addEventListener('click', function(event) {
+               let currentElement = null;
+
+                let clickListener = function(event) {
                     event.preventDefault();
-                    window.chrome.webview.postMessage({
-                        tagName: event.target.tagName,
-                        id: event.target.id,
-                        className: event.target.className,
-                        innerHTML: event.target.innerHTML,
-                        innerText: event.target.innerText,
-                        outerHTML: event.target.outerHTML
-                    });
-                });
+                    if (!document.getElementById('modalWebScrapper')) {
+                        document.removeEventListener('mouseover', mouseoverListener);
+                        document.removeEventListener('mouseout', mouseoutListener);
+                        document.removeEventListener('click', clickListener);
+
+                        currentElement = event.target; 
+
+                        var modalContent = `
+                            <div id='modalWebScrapper' style='position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;'>
+                                <div style='background-color: white; padding: 20px; border-radius: 10px;'>
+                                    <h3>Choose an action for the element:</h3>
+                                    <button title=' `+ escapeHtml(currentElement.innerText) + `' onclick='extractInnerText()'>Extract Inner Text</button>
+                                    <button title=' `+ escapeHtml(currentElement.innerHTML) + `' onclick='extractInnerHTML()'>Extract Inner HTML</button>
+                                    <button title=' `+ escapeHtml(currentElement.outerHTML) + `' onclick='extractOuterHTML()'>Extract Outer HTML</button>
+                                    <button title='click' onclick='extractClickEvent()'>Click</button>
+                                    <button onclick='closeModal()'>Close</button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.insertAdjacentHTML('beforeend', modalContent);
+                    }
+                };
+                function escapeHtml(html) {
+                    return html
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/""/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                let mouseoverListener = function(event) {
+                    event.target.style.border = '2px solid red';
+                };
+
+                let mouseoutListener = function(event) {
+                    event.target.style.border = '';
+                };
+
+                document.addEventListener('mouseover', mouseoverListener);
+                document.addEventListener('mouseout', mouseoutListener);
+                document.addEventListener('click', clickListener);
+
+                function extractInnerText() {
+                    if (currentElement) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            action: 'Extract Inner Text',
+                            element: {
+                                tagName: currentElement.tagName,
+                                id: currentElement.id,
+                                className: currentElement.className,
+                                innerText: currentElement.innerText
+                            }
+                        }));
+                        closeModal();
+                    }
+                }
+
+                function extractInnerHTML() {
+                    if (currentElement) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            action: 'Extract Inner HTML',
+                            element: {
+                                tagName: currentElement.tagName,
+                                id: currentElement.id,
+                                className: currentElement.className,
+                                innerHTML: currentElement.innerHTML
+                            }
+                        }));
+                        closeModal();
+                    }
+                }
+
+                function extractClickEvent() {
+                    if (currentElement) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            action: 'Click Event',
+                            element: {
+                                tagName: currentElement.tagName,
+                                id: currentElement.id,
+                                className: currentElement.className,
+                                outerHTML: currentElement.outerHTML 
+                            }
+                        }));
+                        currentElement.click();
+                        closeModal();
+                    }
+                }
+
+                function extractOuterHTML() {
+                    if (currentElement) {
+                        window.chrome.webview.postMessage(JSON.stringify({
+                            action: 'Extract Outer HTML',
+                            element: {
+                                tagName: currentElement.tagName,
+                                id: currentElement.id,
+                                className: currentElement.className,
+                                outerHTML: currentElement.outerHTML
+                            }
+                        }));
+                        closeModal();
+                    }
+                }
+
+                function closeModal() {
+                    var modal = document.getElementById('modalWebScrapper');
+                    if (modal) {
+                        modal.remove();
+                        setTimeout(() => {
+                            document.addEventListener('click', clickListener);
+                            document.addEventListener('mouseover', mouseoverListener);
+                            document.addEventListener('mouseout', mouseoutListener);
+                        }, 100);
+                    }
+                }
             ";
             await webView.CoreWebView2.ExecuteScriptAsync(script);
 
-            // Önceki görevleri yeniden yükleyin
-            if (tasks != null && tasks.Count > 0)
-            {
-                foreach (var task in tasks)
-                {
-                    string taskScript = $@"
-                        var elements = document.getElementsByTagName('{task.FieldName}');
-                        for (var i = 0; i < elements.length; i++) {{
-                            if (elements[i].id === '{task.ElementId}' && elements[i].className === '{task.ElementClassName}') {{
-                                window.chrome.webview.postMessage({{
-                                    tagName: elements[i].tagName,
-                                    id: elements[i].id,
-                                    className: elements[i].className,
-                                    innerHTML: elements[i].innerHTML,
-                                    innerText: elements[i].innerText,
-                                    outerHTML: elements[i].outerHTML
-                                }});
-                                break;
-                            }}
-                        }}
-                    ";
-                    await webView.CoreWebView2.ExecuteScriptAsync(taskScript);
-                }
-            }
         }
 
         private void WebView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            string message = e.WebMessageAsJson;
-            dynamic element = JsonConvert.DeserializeObject(message);
+            Console.WriteLine("WebMessageReceived event triggered.");
+            try
+            {
+                string message = e.WebMessageAsJson;
+                Console.WriteLine("Received message: " + message);
+                message = message.Trim('"');
+                message = message.Replace("\\\"", "\"");
+                message = message.Replace("\\\\", "\\");
+                dynamic element = JsonConvert.DeserializeObject(message);
 
-            var form = new Form
-            {
-                Width = 300,
-                Height = 200,
-                Text = "Choose an action"
-            };
+                if (element?.action != null && element?.element != null)
+                {
+                    string action = (string)element.action;
+                    dynamic el = element.element;
 
-            var label = new Label
-            {
-                Left = 10,
-                Top = 10,
-                Width = 260,
-                Text = "Choose what to extract from the element:"
-            };
-            form.Controls.Add(label);
+                    string result = null;
 
-            var innerTextButton = new Button
-            {
-                Text = "Extract Inner Text",
-                Left = 10,
-                Width = 120,
-                Top = 40
-            };
-            innerTextButton.Click += (s, args) =>
-            {
-                AddTask(element, "Extract Inner Text", (string)element.innerText);
-                form.Close();
-            };
-            form.Controls.Add(innerTextButton);
+                    if (el is JObject)
+                    {
+                        switch (action)
+                        {
+                            case "Extract Inner Text":
+                                result = (string)el.innerText;
+                                break;
+                            case "Extract Inner HTML":
+                                result = (string)el.innerHTML;
+                                break;
+                            case "Extract Outer HTML":
+                                result = (string)el.outerHTML;
+                                break;
+                            case "Click Event":
+                                result = "Click";
+                                break;
+                            default:
+                                Console.WriteLine("Unknown action: " + action);
+                                return;
+                        }
 
-            var innerHTMLButton = new Button
+                        if (result != null)
+                        {
+                            AddTask(el, action, result);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed to extract " + action);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Element is not of type JObject");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid message format");
+                }
+            }
+            catch (Exception ex)
             {
-                Text = "Extract Inner HTML",
-                Left = 150,
-                Width = 120,
-                Top = 40
-            };
-            innerHTMLButton.Click += (s, args) =>
+                Console.WriteLine("Exception occurred: " + ex.Message);
+            }
+            finally
             {
-                AddTask(element, "Extract Inner HTML", (string)element.innerHTML);
-                form.Close();
-            };
-            form.Controls.Add(innerHTMLButton);
-
-            var outerHTMLButton = new Button
-            {
-                Text = "Extract Outer HTML",
-                Left = 10,
-                Width = 120,
-                Top = 80
-            };
-            outerHTMLButton.Click += (s, args) =>
-            {
-                AddTask(element, "Extract Outer HTML", (string)element.outerHTML);
-                form.Close();
-            };
-            form.Controls.Add(outerHTMLButton);
-
-            form.ShowDialog();
+                Console.WriteLine("WebMessageReceived event processing completed.");
+            }
         }
+
 
         private void AddTask(dynamic element, string action, string extractedData)
         {
-            // DataGridView'a ekle
+            // Add To DataGriedView
             dataGridViewTask.Rows.Add(new object[] { element.tagName, action, extractedData });
 
-            // Yeni görevi listeye ekle
-            var task = new ScrapingTask
-            {
-                FieldName = element.tagName,
-                Action = action,
-                ExtractedData = extractedData,
-                ElementId = element.id,
-                ElementClassName = element.className
-            };
-            tasks.Add(task);
+            //var task = new ScrapingTask
+            //{
+            //    FieldName = element.tagName,
+            //    Action = action,
+            //    ExtractedData = extractedData,
+            //    ElementId = element.id,
+            //    ElementClassName = element.className
+            //};
+            //tasks.Add(task);
 
-            // Görevleri ve URL'yi kaydet
-            SaveTasks();
+
         }
 
-       private void LoadTasks()
+        private void LoadTasks()
         {
             if (File.Exists("tasks.json"))
             {
@@ -198,7 +283,18 @@ namespace WebScrapper
             }
         }
 
-        private void SaveTasks()
+        private void btnGo_Click(object sender, EventArgs e)
+        {
+            string url = textBoxUrl.Text;
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                dataGridViewTask.Rows.Add(new object[] { "Website", "Go", url });
+                webView.CoreWebView2.Navigate(url);
+                lastUrl = url;
+            }
+        }
+
+        private void btnSave_Click(object sender, EventArgs e)
         {
             var saveData = new SaveData
             {
@@ -207,16 +303,6 @@ namespace WebScrapper
             };
             string json = JsonConvert.SerializeObject(saveData, Formatting.Indented);
             File.WriteAllText("tasks.json", json);
-        }
-
-        private void btnGo_Click(object sender, EventArgs e)
-        {
-            string url = textBoxUrl.Text;
-            if (!string.IsNullOrWhiteSpace(url))
-            {
-                webView.CoreWebView2.Navigate(url);
-                lastUrl = url;
-            }
         }
     }
     public class ScrapingTask
