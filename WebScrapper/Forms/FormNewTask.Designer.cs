@@ -38,7 +38,7 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             tableLayoutPanel2 = new TableLayoutPanel();
             tableLayoutPanel3 = new TableLayoutPanel();
-            btnSave = new Button();
+            btnSave = new FontAwesome.Sharp.IconButton();
             ((System.ComponentModel.ISupportInitialize)dataGridViewTask).BeginInit();
             tableLayoutPanelMain.SuspendLayout();
             tableLayoutPanel1.SuspendLayout();
@@ -90,10 +90,10 @@
             // btnGo
             // 
             btnGo.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnGo.BackColor = Color.White;
+            btnGo.BackColor = Color.Transparent;
             btnGo.FlatStyle = FlatStyle.Flat;
             btnGo.Font = new Font("Microsoft Sans Serif", 8F);
-            btnGo.ForeColor = Color.FromArgb(30, 145, 214);
+            btnGo.ForeColor = Color.FromArgb(172, 126, 241);
             btnGo.Location = new Point(652, 3);
             btnGo.Name = "btnGo";
             btnGo.Size = new Size(44, 23);
@@ -166,24 +166,30 @@
             // 
             // btnSave
             // 
-            btnSave.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnSave.BackColor = Color.White;
+            btnSave.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnSave.FlatAppearance.BorderColor = Color.FromArgb(172, 126, 241);
             btnSave.FlatStyle = FlatStyle.Flat;
-            btnSave.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Regular, GraphicsUnit.Point, 162);
-            btnSave.ForeColor = Color.FromArgb(30, 145, 214);
-            btnSave.Location = new Point(1132, 489);
-            btnSave.Margin = new Padding(3, 10, 10, 2);
+            btnSave.Font = new Font("Segoe UI", 10F);
+            btnSave.ForeColor = Color.FromArgb(172, 126, 241);
+            btnSave.IconChar = FontAwesome.Sharp.IconChar.Save;
+            btnSave.IconColor = Color.FromArgb(172, 126, 241);
+            btnSave.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnSave.IconSize = 18;
+            btnSave.Location = new Point(1143, 503);
+            btnSave.Margin = new Padding(3, 3, 8, 8);
             btnSave.Name = "btnSave";
-            btnSave.Size = new Size(84, 29);
+            btnSave.Size = new Size(75, 28);
             btnSave.TabIndex = 5;
             btnSave.Text = "SAVE";
-            btnSave.UseVisualStyleBackColor = false;
+            btnSave.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnSave.UseVisualStyleBackColor = true;
             btnSave.Click += btnSave_Click;
             // 
             // FormNewTask
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.FromArgb(34, 33, 74);
             ClientSize = new Size(1226, 539);
             Controls.Add(tableLayoutPanelMain);
             Name = "FormNewTask";
@@ -209,6 +215,6 @@
         private TableLayoutPanel tableLayoutPanel2;
         private TableLayoutPanel tableLayoutPanel3;
         private TableLayoutPanel tableLayoutPanel1;
-        private Button btnSave;
+        private FontAwesome.Sharp.IconButton btnSave;
     }
 }

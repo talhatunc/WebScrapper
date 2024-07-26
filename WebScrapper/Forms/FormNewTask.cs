@@ -21,6 +21,7 @@ namespace WebScrapper
 
         public FormNewTask()
         {
+            tasks = new List<ScrapingTask>();
             InitializeComponent();
             InitializeControls();
             //LoadTasks();
@@ -45,7 +46,7 @@ namespace WebScrapper
         private async void WebView_DOMContentLoaded(object sender, CoreWebView2DOMContentLoadedEventArgs e)
         {
             string script = @"
-               let currentElement = null;
+                let currentElement = null;
 
                 let clickListener = function(event) {
                     event.preventDefault();
@@ -54,16 +55,16 @@ namespace WebScrapper
                         document.removeEventListener('mouseout', mouseoutListener);
                         document.removeEventListener('click', clickListener);
 
-                        currentElement = event.target; 
+                        currentElement = event;
 
                         var modalContent = `
                             <div id='modalWebScrapper' style='position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;'>
                                 <div style='background-color: white; padding: 20px; border-radius: 10px;'>
                                     <h3>Choose an action for the element:</h3>
-                                    <button title=' `+ escapeHtml(currentElement.innerText) + `' onclick='extractInnerText()'>Extract Inner Text</button>
-                                    <button title=' `+ escapeHtml(currentElement.innerHTML) + `' onclick='extractInnerHTML()'>Extract Inner HTML</button>
-                                    <button title=' `+ escapeHtml(currentElement.outerHTML) + `' onclick='extractOuterHTML()'>Extract Outer HTML</button>
-                                    <button title='click' onclick='extractClickEvent()'>Click</button>
+                                    <button title='` + escapeHtml(currentElement.target.innerText) + `' onclick='extractInnerText()'>Extract Inner Text</button>
+                                    <button title='` + escapeHtml(currentElement.target.innerHTML) + `' onclick='extractInnerHTML()'>Extract Inner HTML</button>
+                                    <button title='` + escapeHtml(currentElement.target.outerHTML) + `' onclick='extractOuterHTML()'>Extract Outer HTML</button>
+                                    <button title='Click' onclick='extractClickEvent()'>Click</button>
                                     <button onclick='closeModal()'>Close</button>
                                 </div>
                             </div>
@@ -71,6 +72,7 @@ namespace WebScrapper
                         document.body.insertAdjacentHTML('beforeend', modalContent);
                     }
                 };
+
                 function escapeHtml(html) {
                     return html
                         .replace(/&/g, '&amp;')
@@ -94,14 +96,17 @@ namespace WebScrapper
 
                 function extractInnerText() {
                     if (currentElement) {
+                        var elementTarget = currentElement.target;
                         window.chrome.webview.postMessage(JSON.stringify({
                             action: 'Extract Inner Text',
                             element: {
-                                tagName: currentElement.tagName,
-                                id: currentElement.id,
-                                className: currentElement.className,
-                                innerText: currentElement.innerText
-                            }
+                                tagName: elementTarget.tagName,
+                                id: elementTarget.id,
+                                className: elementTarget.className,
+                                innerText: elementTarget.innerText,
+                                xpath: generateXPath(elementTarget)
+                            },
+                            event: currentElement
                         }));
                         closeModal();
                     }
@@ -109,13 +114,15 @@ namespace WebScrapper
 
                 function extractInnerHTML() {
                     if (currentElement) {
+                        var elementTarget = currentElement.target;
                         window.chrome.webview.postMessage(JSON.stringify({
                             action: 'Extract Inner HTML',
                             element: {
-                                tagName: currentElement.tagName,
-                                id: currentElement.id,
-                                className: currentElement.className,
-                                innerHTML: currentElement.innerHTML
+                                tagName: elementTarget.tagName,
+                                id: elementTarget.id,
+                                className: elementTarget.className,
+                                innerHTML: elementTarget.innerHTML,
+                                xpath: generateXPath(elementTarget)
                             }
                         }));
                         closeModal();
@@ -124,29 +131,33 @@ namespace WebScrapper
 
                 function extractClickEvent() {
                     if (currentElement) {
+                        var elementTarget = currentElement.target;
                         window.chrome.webview.postMessage(JSON.stringify({
                             action: 'Click Event',
                             element: {
-                                tagName: currentElement.tagName,
-                                id: currentElement.id,
-                                className: currentElement.className,
-                                outerHTML: currentElement.outerHTML 
+                                tagName: elementTarget.tagName,
+                                id: elementTarget.id,
+                                className: elementTarget.className,
+                                outerHTML: elementTarget.outerHTML,
+                                xpath: generateXPath(elementTarget)
                             }
                         }));
-                        currentElement.click();
+                        elementTarget.click();
                         closeModal();
                     }
                 }
 
                 function extractOuterHTML() {
                     if (currentElement) {
+                        var elementTarget = currentElement.target;
                         window.chrome.webview.postMessage(JSON.stringify({
                             action: 'Extract Outer HTML',
                             element: {
-                                tagName: currentElement.tagName,
-                                id: currentElement.id,
-                                className: currentElement.className,
-                                outerHTML: currentElement.outerHTML
+                                tagName: elementTarget.tagName,
+                                id: elementTarget.id,
+                                className: elementTarget.className,
+                                outerHTML: elementTarget.outerHTML,
+                                xpath: generateXPath(elementTarget)
                             }
                         }));
                         closeModal();
@@ -162,6 +173,27 @@ namespace WebScrapper
                             document.addEventListener('mouseover', mouseoverListener);
                             document.addEventListener('mouseout', mouseoutListener);
                         }, 100);
+                    }
+                }
+
+                //XPath
+                function generateXPath(element) {
+                    if (element.id !== '') {
+                        return '//*[@id=""' + element.id + '""]';
+                    }
+                    if (element === document.body) {
+                        return '/html/body';
+                    }
+                    var ix = 0;
+                    var siblings = element.parentNode.childNodes;
+                    for (var i = 0; i < siblings.length; i++) {
+                        var sibling = siblings[i];
+                        if (sibling === element) {
+                            return generateXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
+                        }
+                        if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+                            ix++;
+                        }
                     }
                 }
             ";
@@ -244,16 +276,16 @@ namespace WebScrapper
             // Add To DataGriedView
             dataGridViewTask.Rows.Add(new object[] { element.tagName, action, extractedData });
 
-            //var task = new ScrapingTask
-            //{
-            //    FieldName = element.tagName,
-            //    Action = action,
-            //    ExtractedData = extractedData,
-            //    ElementId = element.id,
-            //    ElementClassName = element.className
-            //};
-            //tasks.Add(task);
-
+            var task = new ScrapingTask
+            {
+                FieldName = element.tagName,
+                Action = action,
+                ExtractedData = extractedData,
+                ElementId = element.id,
+                ElementClassName = element.className,
+                xPath = element.xpath,
+            };
+            tasks.Add(task);
 
         }
 
@@ -296,14 +328,83 @@ namespace WebScrapper
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            var saveData = new SaveData
-            {
-                Tasks = tasks,
-                Url = lastUrl
-            };
-            string json = JsonConvert.SerializeObject(saveData, Formatting.Indented);
-            File.WriteAllText("tasks.json", json);
+            //var saveData = new SaveData
+            //{
+            //    Tasks = tasks,
+            //    Url = lastUrl
+            //};
+            //string json = JsonConvert.SerializeObject(saveData, Formatting.Indented);
+            //File.WriteAllText("tasks.json", json);
+            ReplayTasks();
         }
+
+        private async void ReplayTasks()
+        {
+            if (!string.IsNullOrWhiteSpace(lastUrl))
+            {
+                webView.CoreWebView2.Navigate(lastUrl);
+
+                await Task.Delay(5000); // Wait for the page to load
+
+                foreach (var task in tasks)
+                {
+                    string script = null;
+
+                    switch (task.Action)
+                    {
+                        case "Extract Inner Text":
+                            script = GenerateScript(task, "innerText");
+                            break;
+                        case "Extract Inner HTML":
+                            script = GenerateScript(task, "innerHTML");
+                            break;
+                        case "Extract Outer HTML":
+                            script = GenerateScript(task, "outerHTML");
+                            break;
+                        case "Click Event":
+                            script = GenerateScript(task, "click");
+                            break;
+                    }
+
+                    if (script != null)
+                    {
+                        await webView.CoreWebView2.ExecuteScriptAsync(script);
+                    }
+                }
+            }
+        }
+
+        private string GenerateScript(ScrapingTask task, string action)
+        {
+            string script = "document.removeEventListener('mouseover', mouseoverListener);" +
+                            "document.removeEventListener('mouseout', mouseoutListener);" +
+                            " document.removeEventListener('click', clickListener);";
+            if (!string.IsNullOrEmpty(task.ElementId))
+            {
+                if (action == "click")
+                {
+                    script += $"document.getElementById('{task.ElementId}').click();";
+                }
+                else
+                {
+                    script += $"console.log(document.getElementById('{task.ElementId}').{action});";
+                }
+            }
+            else if (!string.IsNullOrEmpty(task.xPath))
+            {
+                string escapedXPath = task.xPath.Replace("\"", "\\\"");
+                if (action == "click")
+                {
+                    script += $"document.evaluate(\"{escapedXPath}\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();";
+                }
+                else
+                {
+                    script += $"console.log(document.evaluate(\"{escapedXPath}\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.{action});";
+                }
+            }
+            return script;
+        }
+
     }
     public class ScrapingTask
     {
@@ -312,6 +413,7 @@ namespace WebScrapper
         public string ExtractedData { get; set; }
         public string ElementId { get; set; }
         public string ElementClassName { get; set; }
+        public string xPath { get; set; }
     }
 
     public class SaveData

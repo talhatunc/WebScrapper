@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FontAwesome.Sharp;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Media;
 
 namespace WebScrapper
 {
@@ -26,17 +28,25 @@ namespace WebScrapper
                 return _instance;
             }
         }
-        private Button currentButton;
+        private IconButton currentButton;
         private Random random;
         private int tempIndex;
+        private Panel leftBorderBtn;
         public FormMain()
         {
             InitializeComponent();
             _instance = this;
             random = new Random();
-            btnClose.Visible = false;
+            //btnClose.Visible = false;
             this.Text = string.Empty;
             this.ControlBox = false;
+            leftBorderBtn = new Panel();
+            leftBorderBtn.Size = new Size(7, 40);
+            leftBorderBtn.BackColor = System.Drawing.Color.FromArgb(62, 104, 182);
+            panelMenu.Controls.Add(leftBorderBtn);
+
+            this.DoubleBuffered = true;
+            this.MaximizedBounds = Screen.FromHandle(this.Handle).WorkingArea;
         }
 
         [DllImport("user32.DLL", EntryPoint = "ReleaseCapture")]
@@ -46,31 +56,47 @@ namespace WebScrapper
 
         private void ActivateButton(object btnSender)
         {
+
             if (currentButton != (Button)btnSender)
             {
                 DisableButton();
-                Color color = ThemeColor.Active;
-                currentButton = (Button)btnSender;
-                currentButton.BackColor = color;
-                currentButton.ForeColor = Color.White;
-                currentButton.Font = new Font("Microsoft Sans Serif", 13.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
-                btnClose.Visible = true;
+                currentButton = (IconButton)btnSender;
+                System.Drawing.Color color = ThemeColor.Active;
+                currentButton.BackColor = System.Drawing.Color.FromArgb(37, 36, 81);
+                currentButton.ForeColor = color;
+                currentButton.TextAlign = ContentAlignment.MiddleCenter;
+                currentButton.IconColor = color;
+                currentButton.TextImageRelation = TextImageRelation.TextBeforeImage;
+                currentButton.ImageAlign = ContentAlignment.MiddleRight;
+
+                
+
+                leftBorderBtn.Location = new Point(0, currentButton.Location.Y);
+                leftBorderBtn.BackColor = color;
+                leftBorderBtn.Visible = true;
+                leftBorderBtn.BringToFront();
+
+                iconCurrentChildForm.IconChar = currentButton.IconChar;
+                currentButton.TextAlign = ContentAlignment.MiddleCenter;
+
             }
         }
 
         private void DisableButton()
         {
-            foreach (Control previousBtn in panelMenu.Controls)
+            if (currentButton != null)
             {
-                if (previousBtn.GetType() == typeof(Button))
-                {
-                    previousBtn.BackColor = ThemeColor.Passive;
-                    previousBtn.ForeColor = Color.Gainsboro;
-                    previousBtn.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-                }
+                leftBorderBtn.Visible = false;
+                System.Drawing.Color color = ThemeColor.Passive;
+                currentButton.BackColor = color;
+                currentButton.ForeColor = System.Drawing.Color.Gainsboro;
+                currentButton.TextAlign = ContentAlignment.MiddleLeft;
+                currentButton.IconColor = System.Drawing.Color.Gainsboro;
+                currentButton.TextImageRelation = TextImageRelation.ImageBeforeText;
+                currentButton.ImageAlign = ContentAlignment.MiddleLeft;
             }
         }
-        public void OpenChildForm(Form childForm, object btnSender)
+        public void OpenChildForm(Form childForm, object btnSender,bool? active)
         {
             if (activeForm != null)
             {
@@ -80,7 +106,8 @@ namespace WebScrapper
             {
                 childForm.TopLevel = false;
             }
-            ActivateButton(btnSender);
+            if(active!=false)
+                ActivateButton(btnSender);
             activeForm = childForm;
             childForm.FormBorderStyle = FormBorderStyle.None;
             childForm.Dock = DockStyle.Fill;
@@ -90,26 +117,14 @@ namespace WebScrapper
             lblTitle.Text = childForm.Text;
             childForm.Show();
         }
-        private void btnHome_Click(object sender, EventArgs e)
-        {
-            OpenChildForm(new Forms.FormHome(), sender);
-        }
 
-        private void btnClose_Click(object sender, EventArgs e)
-        {
-            if (activeForm != null)
-            {
-                activeForm.Close();
-                Reset();
-            }
-        }
 
         private void Reset()
         {
             DisableButton();
+            iconCurrentChildForm.IconChar = IconChar.None;
             lblTitle.Text = "";
             currentButton = null;
-            btnClose.Visible = false;
         }
 
         private void panelTitle_MouseDown(object sender, MouseEventArgs e)
@@ -134,6 +149,20 @@ namespace WebScrapper
         private void btnAppClose_Click(object sender, EventArgs e)
         {
             this.Close();
+        }
+
+        private void btnHome_Click_1(object sender, EventArgs e)
+        {
+            OpenChildForm(new Forms.FormHome(), sender,true);
+        }
+
+        private void btnClose_Click(object sender, EventArgs e)
+        {
+            if (activeForm != null)
+            {
+                activeForm.Close();
+                Reset();
+            }
         }
     }
 }

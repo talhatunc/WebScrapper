@@ -21,7 +21,7 @@ namespace WebScrapper.Forms
         {
             Form formTask = new FormNewTask();
             formTask.Text = "New Task";
-            FormMain.Instance.OpenChildForm(formTask, sender);
+            FormMain.Instance.OpenChildForm(formTask, sender,false);
         }
     }
 }

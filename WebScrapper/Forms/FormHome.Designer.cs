@@ -28,51 +28,54 @@
         /// </summary>
         private void InitializeComponent()
         {
-            btnNewTask = new Button();
             listBoxTasks = new ListBox();
+            btnNewTask = new FontAwesome.Sharp.IconButton();
             SuspendLayout();
-            // 
-            // btnNewTask
-            // 
-            btnNewTask.Anchor = AnchorStyles.None;
-            btnNewTask.BackColor = Color.White;
-            btnNewTask.FlatAppearance.BorderColor = Color.FromArgb(30, 145, 214);
-            btnNewTask.FlatStyle = FlatStyle.Flat;
-            btnNewTask.Font = new Font("Microsoft Sans Serif", 11F, FontStyle.Regular, GraphicsUnit.Point, 162);
-            btnNewTask.ForeColor = Color.FromArgb(30, 145, 214);
-            btnNewTask.Location = new Point(12, 25);
-            btnNewTask.Name = "btnNewTask";
-            btnNewTask.Size = new Size(109, 33);
-            btnNewTask.TabIndex = 0;
-            btnNewTask.Text = "+ Task";
-            btnNewTask.UseVisualStyleBackColor = false;
-            btnNewTask.Click += btnNewTask_Click;
             // 
             // listBoxTasks
             // 
             listBoxTasks.Anchor = AnchorStyles.None;
             listBoxTasks.FormattingEnabled = true;
             listBoxTasks.ItemHeight = 15;
-            listBoxTasks.Location = new Point(12, 64);
+            listBoxTasks.Location = new Point(13, 64);
             listBoxTasks.Name = "listBoxTasks";
             listBoxTasks.Size = new Size(109, 304);
             listBoxTasks.TabIndex = 1;
+            // 
+            // btnNewTask
+            // 
+            btnNewTask.Anchor = AnchorStyles.None;
+            btnNewTask.FlatAppearance.BorderColor = Color.FromArgb(172, 126, 241);
+            btnNewTask.FlatStyle = FlatStyle.Flat;
+            btnNewTask.ForeColor = Color.FromArgb(172, 126, 241);
+            btnNewTask.IconChar = FontAwesome.Sharp.IconChar.Plus;
+            btnNewTask.IconColor = Color.FromArgb(172, 126, 241);
+            btnNewTask.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnNewTask.IconSize = 20;
+            btnNewTask.Location = new Point(13, 26);
+            btnNewTask.Name = "btnNewTask";
+            btnNewTask.Size = new Size(109, 32);
+            btnNewTask.TabIndex = 2;
+            btnNewTask.Text = "New Task";
+            btnNewTask.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnNewTask.UseVisualStyleBackColor = true;
+            btnNewTask.Click += btnNewTask_Click;
             // 
             // FormHome
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(143, 380);
-            Controls.Add(listBoxTasks);
+            BackColor = Color.FromArgb(34, 33, 74);
+            ClientSize = new Size(134, 380);
             Controls.Add(btnNewTask);
+            Controls.Add(listBoxTasks);
             Name = "FormHome";
             Text = "Home";
             ResumeLayout(false);
         }
 
         #endregion
-
-        private Button btnNewTask;
         private ListBox listBoxTasks;
+        private FontAwesome.Sharp.IconButton btnNewTask;
     }
 }
