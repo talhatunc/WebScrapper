@@ -10,6 +10,10 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Reflection.Metadata;
 using Newtonsoft.Json.Linq;
+using System.Windows.Controls;
+using static System.Net.Mime.MediaTypeNames;
+using System.Reflection.Emit;
+using System.Windows;
 
 namespace WebScrapper
 {
@@ -17,16 +21,20 @@ namespace WebScrapper
     {
         private List<ScrapingTask> tasks;
         private WebView2 webView;
-        private string lastUrl;
 
         public FormNewTask()
         {
             tasks = new List<ScrapingTask>();
             InitializeComponent();
             InitializeControls();
-            //LoadTasks();
         }
-
+        public FormNewTask(string load)
+        {
+            tasks = new List<ScrapingTask>();
+            InitializeComponent();
+            InitializeControls();
+            LoadTasks(load);
+        }
 
         private async Task InitializeControls()
         {
@@ -39,7 +47,6 @@ namespace WebScrapper
             // WebView2'nin baþlatýlmasýný bekleyin
             await webView.EnsureCoreWebView2Async(null);
 
-            // WebView2 baþlatýldýktan sonra CoreWebView2'yi kullanýn
             webView.CoreWebView2.DOMContentLoaded += WebView_DOMContentLoaded;
             webView.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
         }
@@ -289,30 +296,29 @@ namespace WebScrapper
 
         }
 
-        private void LoadTasks()
+        private void LoadTasks(string fileName)
         {
-            if (File.Exists("tasks.json"))
+            string directory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tasks");
+            fileName += ".json";
+            if (File.Exists(directory + "\\" + fileName))
             {
-                string json = File.ReadAllText("tasks.json");
+                string json = File.ReadAllText(directory + "\\" + fileName);
                 var saveData = JsonConvert.DeserializeObject<SaveData>(json);
                 tasks = saveData.Tasks;
-                lastUrl = saveData.Url;
-                textBoxUrl.Text = lastUrl;
-
-                if (!string.IsNullOrWhiteSpace(lastUrl) && webView.CoreWebView2 != null)
-                {
-                    webView.CoreWebView2.Navigate(lastUrl);
-                }
 
                 foreach (var task in tasks)
                 {
+                    if(task.Action == "GO") { 
                     dataGridViewTask.Rows.Add(new object[] { task.FieldName, task.Action, task.ExtractedData });
+                    break;
+                    }
                 }
             }
             else
             {
                 tasks = new List<ScrapingTask>();
             }
+            ReplayTasks();
         }
 
         private void btnGo_Click(object sender, EventArgs e)
@@ -320,74 +326,126 @@ namespace WebScrapper
             string url = textBoxUrl.Text;
             if (!string.IsNullOrWhiteSpace(url))
             {
+                var task = new ScrapingTask
+                {
+                    FieldName = url,
+                    Action = "GO"
+                };
                 dataGridViewTask.Rows.Add(new object[] { "Website", "Go", url });
+                tasks.Add(task);
                 webView.CoreWebView2.Navigate(url);
-                lastUrl = url;
             }
         }
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-            //var saveData = new SaveData
+            string fileName = InputBox.Show("Enter the file name:", "Save Task File");
+
+            if (!string.IsNullOrWhiteSpace(fileName))
+            {
+                string directory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tasks");
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                string filePath = Path.Combine(directory, fileName + ".json");
+
+                var saveData = new SaveData
+                {
+                    Tasks = tasks
+                };
+
+                string json = JsonConvert.SerializeObject(saveData, Formatting.Indented);
+                File.WriteAllText(filePath, json);
+            }
+            //using (SaveFileDialog saveFileDialog = new SaveFileDialog())
             //{
-            //    Tasks = tasks,
-            //    Url = lastUrl
-            //};
-            //string json = JsonConvert.SerializeObject(saveData, Formatting.Indented);
-            //File.WriteAllText("tasks.json", json);
-            ReplayTasks();
+            //    saveFileDialog.InitialDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tasks");
+            //    saveFileDialog.Filter = "JSON files (*.json)|*.json";
+            //    saveFileDialog.Title = "Save Task File";
+
+            //    if (!Directory.Exists(saveFileDialog.InitialDirectory))
+            //    {
+            //        Directory.CreateDirectory(saveFileDialog.InitialDirectory);
+            //    }
+
+            //    if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            //    {
+            //        var saveData = new SaveData
+            //        {
+            //            Tasks = tasks,
+            //            Url = lastUrl
+            //        };
+            //        string json = JsonConvert.SerializeObject(saveData, Formatting.Indented);
+            //        File.WriteAllText(saveFileDialog.FileName, json);
+            //    }
+            //}
         }
 
         private async void ReplayTasks()
         {
-            if (!string.IsNullOrWhiteSpace(lastUrl))
+            string script = "document.removeEventListener('mouseover', mouseoverListener);" +
+                       "document.removeEventListener('mouseout', mouseoutListener);" +
+                      " document.removeEventListener('click', clickListener);";
+            foreach (var task in tasks)
             {
-                webView.CoreWebView2.Navigate(lastUrl);
-
-                await Task.Delay(5000); // Wait for the page to load
-
-                foreach (var task in tasks)
+                switch (task.Action)
                 {
-                    string script = null;
-
-                    switch (task.Action)
-                    {
-                        case "Extract Inner Text":
-                            script = GenerateScript(task, "innerText");
-                            break;
-                        case "Extract Inner HTML":
-                            script = GenerateScript(task, "innerHTML");
-                            break;
-                        case "Extract Outer HTML":
-                            script = GenerateScript(task, "outerHTML");
-                            break;
-                        case "Click Event":
-                            script = GenerateScript(task, "click");
-                            break;
-                    }
-
-                    if (script != null)
-                    {
-                        await webView.CoreWebView2.ExecuteScriptAsync(script);
-                    }
+                    case "GO":
+                        Uri uriResult;
+                        bool isValidUrl = Uri.TryCreate(task.FieldName, UriKind.Absolute, out uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+                        if (isValidUrl)
+                        {
+                            await Task.Delay(3000);
+                            textBoxUrl.Text = task.FieldName;
+                            if (webView.CoreWebView2 != null)
+                            {
+                                webView.CoreWebView2.Navigate(task.FieldName);
+                                await Task.Delay(2000);
+                            }
+                            else
+                            {
+                                System.Windows.Forms.MessageBox.Show("WebView2 baþlatýlamadý.", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        else
+                        {
+                            System.Windows.Forms.MessageBox.Show($"Geçersiz URL: {task.FieldName}", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        break;
+                    case "Extract Inner Text":
+                        script += GenerateScript(task, "innerText", "Extract Inner Text");
+                        break;
+                    case "Extract Inner HTML":
+                        script += GenerateScript(task, "innerHTML", "Extract Inner HTML");
+                        break;
+                    case "Extract Outer HTML":
+                        script += GenerateScript(task, "outerHTML", "Extract Outer Text");
+                        break;
+                    case "Click Event":
+                        script += GenerateScript(task, "click", "Click");
+                        break;
                 }
+            }
+            if (script != null)
+            {
+                await webView.CoreWebView2.ExecuteScriptAsync(script);
             }
         }
 
-        private string GenerateScript(ScrapingTask task, string action)
+        private string GenerateScript(ScrapingTask task, string action,string name)
         {
-            string script = "document.removeEventListener('mouseover', mouseoverListener);" +
-                            "document.removeEventListener('mouseout', mouseoutListener);" +
-                            " document.removeEventListener('click', clickListener);";
+            string script = null;
             if (!string.IsNullOrEmpty(task.ElementId))
             {
                 if (action == "click")
                 {
-                    script += $"document.getElementById('{task.ElementId}').click();";
+                    script += $"document.getElementById('{task.ElementId}').click();\n";
                 }
                 else
                 {
-                    script += $"console.log(document.getElementById('{task.ElementId}').{action});";
+                    script += $"console.log(document.getElementById('{task.ElementId}').{action});\n";
                 }
             }
             else if (!string.IsNullOrEmpty(task.xPath))
@@ -395,16 +453,30 @@ namespace WebScrapper
                 string escapedXPath = task.xPath.Replace("\"", "\\\"");
                 if (action == "click")
                 {
-                    script += $"document.evaluate(\"{escapedXPath}\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();";
+                    script += $"document.evaluate(\"{escapedXPath}\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();\n";
                 }
                 else
                 {
-                    script += $"console.log(document.evaluate(\"{escapedXPath}\", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.{action});";
+                    script += "console.log('kedi');" +
+                    $"var xpath = \"{escapedXPath}\";" +
+                    "var node = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;" +
+                    "if (node) {" +
+                        "window.chrome.webview.postMessage(JSON.stringify({" +
+                        "    action: '" + name + "'," +
+                        "    element: {" +
+                        "        tagName: node.tagName," +
+                        "        id: node.id," +
+                        "        className: node.className," +
+                        "        " + action + ": node." + action + "," +
+                        "        xpath: xpath" +
+                        "    }" +
+                        "}));" +
+                    "}" +
+                    "console.log('kedi');";
                 }
             }
             return script;
         }
-
     }
     public class ScrapingTask
     {
@@ -419,6 +491,64 @@ namespace WebScrapper
     public class SaveData
     {
         public List<ScrapingTask> Tasks { get; set; }
-        public string Url { get; set; }
+    }
+
+    public static class InputBox
+    {
+        public static string Show(string prompt, string title)
+        {
+            Form form = new Form();
+            System.Windows.Forms.Label label = new System.Windows.Forms.Label();
+            System.Windows.Forms.TextBox textBox = new System.Windows.Forms.TextBox();
+            FontAwesome.Sharp.IconButton buttonOk = new FontAwesome.Sharp.IconButton();
+
+            form.Text = title;
+            label.Text = prompt;
+            textBox.Text = "";
+
+            buttonOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            buttonOk.FlatAppearance.BorderColor = Color.FromArgb(172, 126, 241);
+            buttonOk.FlatStyle = FlatStyle.Flat;
+            buttonOk.ForeColor = Color.FromArgb(172, 126, 241);
+            buttonOk.IconChar = FontAwesome.Sharp.IconChar.Save;
+            buttonOk.IconColor = Color.FromArgb(172, 126, 241);
+            buttonOk.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            buttonOk.IconSize = 18;
+            buttonOk.Location = new System.Drawing.Point(165, 35);
+            buttonOk.Margin = new Padding(3, 3, 8, 8);
+            buttonOk.Name = "btnSave";
+            buttonOk.Size = new System.Drawing.Size(75, 28);
+            buttonOk.TabIndex = 6;
+            buttonOk.Text = "SAVE";
+            buttonOk.TextImageRelation = TextImageRelation.ImageBeforeText;
+            buttonOk.UseVisualStyleBackColor = true;
+
+            buttonOk.DialogResult = DialogResult.OK;
+
+            label.SetBounds(9, 20, 372, 13);
+            textBox.SetBounds(12, 36, 372, 20);
+            buttonOk.SetBounds(228, 72, 75, 23);
+
+            label.AutoSize = true;
+            label.ForeColor = Color.FromArgb(172, 126, 241);
+            textBox.Anchor = textBox.Anchor | AnchorStyles.Right;
+            buttonOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+
+            form.ClientSize = new System.Drawing.Size(396, 107);
+            form.Controls.AddRange(new System.Windows.Forms.Control[] { label, textBox, buttonOk,
+    });
+
+            form.BackColor = Color.FromArgb(34, 33, 74);
+            form.ClientSize = new System.Drawing.Size(Math.Max(300, label.Right + 10), form.ClientSize.Height);
+            form.FormBorderStyle = FormBorderStyle.FixedDialog;
+            form.StartPosition = FormStartPosition.CenterScreen;
+            form.MinimizeBox = false;
+            form.MaximizeBox = false;
+            form.AcceptButton = buttonOk;
+            form.TopMost = true;
+
+            DialogResult dialogResult = form.ShowDialog();
+            return dialogResult == DialogResult.OK ? textBox.Text : null;
+        }
     }
 }

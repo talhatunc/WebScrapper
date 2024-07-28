@@ -41,6 +41,7 @@
             listBoxTasks.Name = "listBoxTasks";
             listBoxTasks.Size = new Size(109, 304);
             listBoxTasks.TabIndex = 1;
+            listBoxTasks.DoubleClick += listBoxTasks_DoubleClick;
             // 
             // btnNewTask
             // 
